@@ -1,132 +1,94 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Faso Art Promo</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        :root { --red: #e63946; --gold: #ffca28; --dark: #0a0a0a; --grey: #1a1a1a; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; padding: 0; }
-        .screen { display: none; height: 100vh; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .active { display: block; }
-        .btn { background: var(--red); color: white; border: none; padding: 15px; border-radius: 12px; width: 100%; font-weight: bold; margin-top: 10px; cursor: pointer; font-size: 16px; }
-        .card { background: var(--grey); padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #333; }
-        input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #222; color: white; box-sizing: border-box; }
-        .nav { position: fixed; bottom: 0; width: 100%; background: #111; display: none; justify-content: space-around; padding: 12px 0; border-top: 1px solid #333; }
-        .badge { background: var(--gold); color: black; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Faso Art Promo</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root { --bg: var(--tg-theme-bg-color, #0f172a); --text: var(--tg-theme-text-color, #ffffff); --btn: var(--tg-theme-button-color, #2563eb); --btn-txt: var(--tg-theme-button-text-color, #ffffff); }
+body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; }
+.card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; margin-top: 10px; box-sizing: border-box; }
+button { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: bold; background: var(--btn); color: var(--btn-txt); cursor: pointer; margin-top: 15px; }
+.status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; }
+.GRATUIT { background: #64748b; }
+.PREMIUM { background: #fbbf24; color: #000; }
+.hidden { display: none; }
+</style>
 </head>
 <body>
+    <h2 style="text-align:center; color: #2563eb;">FASO ART PROMO</h2>
+    <div id="loading" style="text-align:center; margin-top:40px;">Chargement du profil...</div>
 
-    <div id="scr-rules" class="screen active">
-        <h1 style="color:var(--red); text-align:center;">🇧🇫 FASO ART</h1>
+    <div id="dashboard" class="hidden">
         <div class="card">
-            <h3 style="margin-top:0;">⚖️ RÈGLES PROFESSIONNELLES</h3>
-            <p style="font-size:13px; line-height:1.5;">
-                1. Vérification manuelle systématique.<br>
-                2. Vidéo Max : 80 MB / 2 Min (Point 11).<br>
-                3. Anti-Fraude : 3 tentatives erronées = Blocage.<br>
-                4. Pas de contenu illégal.
-            </p>
-        </div>
-        <button class="btn" onclick="show('scr-reg')">✅ J'ACCEPTE LES RÈGLES</button>
-    </div>
-
-    <div id="scr-reg" class="screen">
-        <h3>📝 CRÉER MON PROFIL</h3>
-        <input type="text" id="name" placeholder="Nom professionnel">
-        <input type="text" id="job" placeholder="Métier (Artiste, Manager...)">
-        <input type="tel" id="phone" placeholder="Numéro (+226 uniquement)">
-        <button class="btn" onclick="register()">VALIDER MON INSCRIPTION</button>
-    </div>
-
-    <div id="scr-home" class="screen">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <div><small>VUES</small><br><b style="color:var(--gold)">1.2K</b></div>
-            <div><small>SCORE</small><br><b style="color:var(--gold)">450</b></div>
-            <div><small>RANG</small><br><b>Débutant</b></div>
+            <div style="display:flex; justify-content:space-between;">
+                <b id="userName">Artiste</b>
+                <span id="userStatus" class="status-badge">GRATUIT</span>
+            </div>
+            <p style="font-size: 14px; margin-top:10px;">🏆 Score : <b id="userScore">0</b> | 👁️ Vues : <b id="userViews">0</b></p>
         </div>
 
-        <div class="card" style="background:linear-gradient(to right, #ffca28, #ffa000); color:black;" onclick="show('scr-pay')">
-            <b>✨ VITRINE PREMIUM</b><br><small>Badge certifié + Priorité (2500 FCFA)</small>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div class="card" onclick="show('scr-boost')">🚀 BOOST FLASH</div>
-            <div class="card" onclick="show('scr-discover')">🎬 DÉCOUVRIR</div>
-            <div class="card" onclick="show('scr-search')">🔍 RECHERCHE</div>
-            <div class="card" onclick="show('scr-ref')">👥 PARRAINAGE</div>
-        </div>
-    </div>
-
-    <div id="scr-pay" class="screen">
-        <h3>💎 ACTIVATION PREMIUM</h3>
         <div class="card">
-            <p>🟠 Orange Money : <b>07218439</b></p>
-            <p>🟢 Moov Money : <b>03489109</b></p>
-            <p>Montant : <b>2500 FCFA</b></p>
+            <h3 style="margin:0;">✨ Devenir Premium</h3>
+            <p style="font-size:12px; opacity:0.7;">1. Payez 2500 FCFA (Orange/Moov)<br>2. Envoyez le reçu ci-dessous</p>
+            <input type="text" id="transId" placeholder="ID de Transaction" />
+            <input type="file" id="proofFile" accept="image/*" />
+            <button id="sendBtn" onclick="submitPayment()">ENVOYER LA PREUVE</button>
         </div>
-        <div class="card">
-            <label>Capture d'écran du reçu :</label>
-            <input type="file" id="p-file" accept="image/*">
-            <input type="text" id="p-tid" placeholder="ID Transaction (Obligatoire)">
-            <button class="btn" onclick="submitPay()">📤 VÉRIFIER MON DÉPÔT</button>
-        </div>
-        <p id="p-status" style="text-align:center; font-size:12px;"></p>
-        <button class="btn" style="background:#444" onclick="show('scr-home')">RETOUR</button>
     </div>
 
-    <div id="scr-discover" class="screen"><h3>🎬 FLUX ARTISTES</h3><div class="card">Chargement des vidéos...</div><button class="btn" onclick="show('scr-home')">RETOUR</button></div>
-    <div id="scr-search" class="screen"><h3>🔍 RECHERCHE</h3><input type="text" placeholder="Nom ou métier..."><button class="btn" onclick="show('scr-home')">RETOUR</button></div>
-    <div id="scr-ref" class="screen"><h3>👥 PARRAINAGE</h3><div class="card">Lien : t.me/bot?start=REF123<br>5 Filleuls = 1 Boost Offert.</div><button class="btn" onclick="show('scr-home')">RETOUR</button></div>
+<script>
+const tg = window.Telegram.WebApp;
+tg.expand();
+const INIT_DATA = tg.initData;
 
-    <nav class="nav" id="bot-nav">
-        <span onclick="show('scr-home')">🏠 Accueil</span>
-        <span onclick="show('scr-discover')">🎬 Vidéos</span>
-        <span onclick="show('scr-pay')">💎 Premium</span>
-    </nav>
+async function init() {
+    const res = await fetch("/auth", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({initData: INIT_DATA}) });
+    const data = await res.json();
+    if(data.success) {
+        document.getElementById("userName").innerText = data.name;
+        loadData();
+    }
+}
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.enableClosingConfirmation();
+async function loadData() {
+    const res = await fetch("/dashboard", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({initData: INIT_DATA}) });
+    const data = await res.json();
+    if(data.success) {
+        document.getElementById("userStatus").innerText = data.status;
+        document.getElementById("userStatus").className = "status-badge " + data.status;
+        document.getElementById("userScore").innerText = data.score;
+        document.getElementById("userViews").innerText = data.views;
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+    }
+}
 
-        function show(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
+async function submitPayment() {
+    const tid = document.getElementById("transId").value;
+    const file = document.getElementById("proofFile").files[0];
+    const btn = document.getElementById("sendBtn");
 
-        function register() {
-            if(!document.getElementById('name').value) return alert("Nom requis");
-            document.getElementById('bot-nav').style.display = 'flex';
-            show('scr-home');
-        }
+    if(!tid || !file) return tg.showAlert("⚠️ Remplissez tous les champs.");
 
-        async function submitPay() {
-            const file = document.getElementById('p-file').files[0];
-            const tid = document.getElementById('p-tid').value;
-            const status = document.getElementById('p-status');
+    btn.disabled = true; btn.innerText = "ENVOI EN COURS...";
+    const fd = new FormData();
+    fd.append("initData", INIT_DATA); fd.append("trans_id", tid); fd.append("file", file);
 
-            if(!file || !tid) return alert("Photo et ID requis !");
-            
-            status.innerText = "⏳ Vérification en cours...";
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('trans_id', tid);
-            fd.append('user_id', tg.initDataUnsafe.user.id);
+    const res = await fetch("/upload_proof", { method: "POST", body: fd });
+    const data = await res.json();
 
-            try {
-                const res = await fetch('/upload_proof', { method: 'POST', body: fd });
-                const data = await res.json();
-                if(data.success) {
-                    status.innerHTML = "<b style='color:var(--gold)'>✅ REÇU ENVOYÉ !</b><br>Validation sous 24h maximum.";
-                    setTimeout(() => show('scr-home'), 4000);
-                } else {
-                    status.innerText = "❌ Erreur : " + data.error;
-                }
-            } catch(e) { status.innerText = "❌ Erreur serveur."; }
-        }
-    </script>
+    if(data.success) {
+        tg.showAlert("✅ Reçu envoyé ! Activation après vérification admin.");
+        tg.close();
+    } else {
+        tg.showAlert("❌ " + data.error);
+        btn.disabled = false; btn.innerText = "ENVOYER LA PREUVE";
+    }
+}
+init();
+</script>
 </body>
 </html>
