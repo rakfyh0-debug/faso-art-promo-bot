@@ -2,96 +2,89 @@ import telebot
 from telebot import types
 import os
 import sqlite3
+import time
 from flask import Flask, render_template
 from threading import Thread
 
-# --- 1. CONFIGURATION WEB APP (FLASK) ---
+# --- INIT FLASK ---
 app = Flask(__name__)
-
 @app.route('/')
-def index():
-    return render_template('index.html')
+def index(): return render_template('index.html')
 
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-# --- 2. CONFIGURATION BOT ---
+# --- CONFIG BOT ---
 TOKEN = os.getenv('BOT_TOKEN')
-ADMIN_ID = os.getenv('ADMIN_ID') # Ton ID pour recevoir les preuves de paiement
+ADMIN_ID = os.getenv('ADMIN_ID')
 bot = telebot.TeleBot(TOKEN)
-WEBAPP_URL = "https://faso-art-promo.onrender.com"
 
-# --- 3. BASE DE DONNÉES (PROTECTION DES INFOS) ---
-def init_db():
-    conn = sqlite3.connect('faso_art.db', check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users 
-        (tg_id INTEGER PRIMARY KEY, name TEXT, job TEXT, status TEXT DEFAULT 'Gratuit')''')
-    conn.commit()
-    conn.close()
+# --- 🔷 5.4 SÉCURITÉ ANTI-FRAUDE ---
+# Dictionnaire pour limiter les actions (1 action / 5 min)
+user_cooldowns = {}
 
-init_db()
+def check_cooldown(user_id):
+    current_time = time.time()
+    if user_id in user_cooldowns:
+        if current_time - user_cooldowns[user_id] < 300: # 5 minutes
+            return False
+    user_cooldowns[user_id] = current_time
+    return True
 
-# --- 4. MENUS (RETOUR ET PRINCIPAL) ---
-def main_menu():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    web_info = types.WebAppInfo(url=WEBAPP_URL)
-    markup.add(types.KeyboardButton("🚀 OUVRIR L'APPLICATION", web_app=web_info))
-    markup.add("🚀 BOOST FLASH", "✨ VITRINE PREMIUM")
-    markup.add("⚙️ PARAMÈTRES", "💬 CONTACT ADMIN")
-    return markup
-
-def back_menu():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("⬅️ RETOUR AU MENU")
-    return markup
-
-# --- 5. LOGIQUE DU BOT ---
-
+# --- 🔷 1. PREMIER CONTACT ---
 @bot.message_handler(commands=['start'])
-@bot.message_handler(func=lambda m: m.text == "⬅️ RETOUR AU MENU")
-def start(message):
-    bot.send_message(message.chat.id, "📂 **FASO ART PROMO (V.2026)**\nL'application n'est pas qu'un bot, c'est ton agence digitale.", 
-                     reply_markup=main_menu(), parse_mode='Markdown')
+def start_sequence(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🔵 [ DÉMARRER ]")
+    bot.send_message(message.chat.id, "📂 **FASO ART PROMO (V.2026)**\n\nCliquez sur démarrer pour accepter les règles et accéder à l'application.", 
+                     reply_markup=markup, parse_mode='Markdown')
 
-# Gestion des règles professionnelles avant inscription
-@bot.message_handler(func=lambda m: m.text == "✨ VITRINE PREMIUM")
-def show_rules(message):
+@bot.message_handler(func=lambda m: m.text == "🔵 [ DÉMARRER ]")
+def accept_rules(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ J'ACCEPTE LES RÈGLES", callback_data="accept_rules"))
-    rules_text = (
-        "⚖️ **RÈGLES PROFESSIONNELLES**\n\n"
-        "1. Les dépôts sont vérifiés manuellement.\n"
-        "2. Aucune validation sans preuve de paiement.\n"
-        "3. Contenu artistique respectueux uniquement."
-    )
-    bot.send_message(message.chat.id, rules_text, reply_markup=markup, parse_mode='Markdown')
+    markup.add(types.InlineKeyboardButton("✅ J'ACCEPTE LES RÈGLES", callback_data="rules_ok"))
+    text = "📜 **RÈGLES PROFESSIONNELLES**\n\n- Vidéo max 80MB / 2min\n- Paiement vérifié manuellement\n- Pas de contenu illégal."
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
 
-@bot.callback_query_handler(func=lambda call: call.data == "accept_rules")
-def ask_payment(call):
-    bot.send_message(call.message.chat.id, "💳 **PAIEMENT**\nEnvoyez 2500 FCFA au +226 XX XX XX XX.\n\n**PUIS ENVOYEZ ICI LA CAPTURE D'ÉCRAN DU REÇU.**")
+# --- 🔷 5. MONÉTISATION & PAIEMENT ---
+@bot.callback_query_handler(func=lambda call: call.data == "rules_ok")
+def show_app_button(call):
+    # Ici on libère enfin l'accès à la Web App
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    web_info = types.WebAppInfo(url="https://faso-art-promo.onrender.com")
+    markup.add(types.KeyboardButton("🚀 OUVRIR L'APPLICATION", web_app=web_info))
+    bot.send_message(call.message.chat.id, "✅ Accès validé ! Utilisez le bouton en bas pour naviguer.", reply_markup=markup)
 
-# --- 6. VÉRIFICATION DU DÉPÔT (TA RÈGLE D'OR) ---
-@bot.message_handler(content_types=['photo'])
-def handle_payment_proof(message):
-    # On transfère la preuve à l'ADMIN (Toi)
-    bot.send_message(ADMIN_ID, f"🔔 **NOUVELLE PREUVE DE PAIEMENT**\nUtilisateur : @{message.from_user.username}\nID : {message.chat.id}")
-    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
+@bot.message_handler(content_types=['web_app_data'])
+def handle_app_actions(message):
+    action = message.web_app_data.data
     
-    bot.send_message(message.chat.id, "✅ **Reçu envoyé !**\nL'administrateur vérifie le dépôt. Votre premium sera activé sous peu.")
+    if not check_cooldown(message.chat.id):
+        bot.send_message(message.chat.id, "⚠️ **Anti-Spam** : Veuillez attendre 5 minutes entre deux actions.")
+        return
 
-# Gestion des autres boutons
-@bot.message_handler(func=lambda m: m.text == "🚀 BOOST FLASH")
-def boost(message):
-    bot.send_message(message.chat.id, "🚀 **BOOST FLASH**\nVisibilité maximale pendant 24h. Tarif : 1000 FCFA.", reply_markup=back_menu(), parse_mode='Markdown')
+    if action == "premium":
+        msg = (
+            "💎 **VITRINE PREMIUM**\n\n"
+            "🟠 Orange Money : 07218439\n"
+            "🟢 Moov Money : 03489109\n"
+            "💰 Montant : 2500 FCFA\n\n"
+            "👉 Envoyez la CAPTURE D'ÉCRAN ici."
+        )
+        bot.send_message(message.chat.id, msg)
+    
+    elif action == "boost":
+        bot.send_message(message.chat.id, "🚀 **BOOST FLASH (1000 FCFA)**\nEnvoyez votre vidéo pour la mettre en tête de liste.")
 
-@bot.message_handler(func=lambda m: m.text == "💬 CONTACT ADMIN")
-def contact(message):
-    bot.send_message(message.chat.id, "💬 **CONTACT**\nUne question ? Écrivez à l'administrateur ici : @ton_username", reply_markup=back_menu())
+# --- 🔷 6. VALIDATION ADMIN (PHOTO) ---
+@bot.message_handler(content_types=['photo'])
+def process_payment(message):
+    bot.send_message(message.chat.id, "⏳ **Vérification sous 24h maximum.**\nVotre ID transaction est en cours d'analyse.")
+    # Transfert à l'Admin
+    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
+    bot.send_message(ADMIN_ID, f"🔔 **NOUVEAU PAIEMENT**\nUser: @{message.from_user.username}\nID: {message.chat.id}")
 
-# --- 7. LANCEMENT ---
+# --- LANCEMENT ---
+def run_server():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
 if __name__ == "__main__":
-    Thread(target=run_web_server, daemon=True).start()
-    bot.remove_webhook()
+    Thread(target=run_server).start()
     bot.polling(none_stop=True)
