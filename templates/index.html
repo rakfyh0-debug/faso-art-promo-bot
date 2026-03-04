@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faso Art Promo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; padding: 20px; text-align: center; }
+        .header { background: linear-gradient(45deg, #e63946, #1d3557); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 12px; margin-top: 10px; border: 1px solid #333; }
+        .btn-premium { background: #ffca28; color: #000; padding: 12px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .status { color: #4caf50; font-size: 0.9em; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🇧🇫 FASO ART PROMO</h1>
+        <p>Plateforme des Artistes du Burkina</p>
+    </div>
+
+    <div class="card">
+        <h3>Mon Profil</h3>
+        <p id="user-name">Chargement...</p>
+        <div class="status">● Compte Actif</div>
+    </div>
+
+    <button class="btn-premium" onclick="sendPayment()">✨ DEVENIR PREMIUM</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Ouvre l'app en plein écran
+        document.getElementById("user-name").innerText = tg.initDataUnsafe.user.first_name;
+
+        function sendPayment() {
+            tg.sendData("demande_premium"); // Envoie un signal au bot
+            tg.close();
+        }
+    </script>
+</body>
+</html>
