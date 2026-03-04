@@ -4,10 +4,10 @@ import os
 import re
 import sqlite3
 import time
-from flask import Flask        # AJOUTÉ
-from threading import Thread  # AJOUTÉ
+from flask import Flask
+from threading import Thread
 
-# --- 🟢 SYSTÈME ANTI-SOMMEIL (POUR RENDER FREE) ---
+# --- 🟢 SYSTÈME ANTI-SOMMEIL POUR RENDER ---
 app = Flask('')
 
 @app.route('/')
@@ -15,7 +15,6 @@ def home():
     return "Faso Art Promo Bot is Online!"
 
 def run_web_server():
-    # Render utilise la variable d'environnement PORT
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
@@ -28,7 +27,7 @@ TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_ID = os.getenv('ADMIN_ID') 
 bot = telebot.TeleBot(TOKEN)
 
-# --- INITIALISATION BASE DE DONNÉES (Module 0) ---
+# --- INITIALISATION BASE DE DONNÉES ---
 def init_db():
     conn = sqlite3.connect('faso_art.db', check_same_thread=False)
     cursor = conn.cursor()
@@ -77,14 +76,15 @@ def professional_rules(call):
     bot.edit_message_text(rules, call.message.chat.id, call.message.message_id, 
                           reply_markup=markup, parse_mode='Markdown')
 
-# --- MODULE 2 : INSCRIPTION ---
+# --- MODULE 2 : INSCRIPTION (CORRIGÉ) ---
 @bot.callback_query_handler(func=lambda call: call.data == "rules_accept")
 def ask_name(call):
     bot.send_message(call.message.chat.id, "🎨 Quel est votre **nom d'artiste** ?")
-    bot.register_next_step_handler(call.message, save_user_info, 'name')
+    bot.register_next_step_handler(call.message, process_name_step)
 
-def save_user_info(message, field):
-    bot.send_message(message.chat.id, f"✅ {field.capitalize()} enregistré. Continuez l'inscription...")
+def process_name_step(message):
+    user_name = message.text
+    bot.send_message(message.chat.id, f"✅ Nom `{user_name}` enregistré !")
     show_main_menu(message)
 
 # --- MODULE 3 : MENU PRINCIPAL ---
@@ -94,14 +94,11 @@ def show_main_menu(message):
     markup.add("🎬 DÉCOUVRIR", "🔍 RECHERCHE")
     markup.add("⚙️ PARAMÈTRES", "💬 CONTACT ADMIN")
     
-    score = 0 
-    level = "Débutant" if score < 500 else "Confirmé"
-    
     welcome = (
         f"🌟 **TABLEAU DE BORD**\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"👤 Artiste : `Utilisateur` \n"
-        f"📊 Score : `{score}` | Rang : `{level}`\n"
+        f"👤 Artiste : Enregistré\n"
+        f"📊 Score : `0` | Rang : `Débutant`\n"
         f"🔥 Boost : `Inactif` \n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -127,13 +124,13 @@ def ask_proof(call):
     bot.register_next_step_handler(call.message, process_proof)
 
 def process_proof(message):
-    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
-    bot.send_message(ADMIN_ID, f"🔔 **DEMANDE PREMIUM**\nDe : @{message.from_user.username}\nID : {message.chat.id}")
+    if ADMIN_ID:
+        bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
+        bot.send_message(ADMIN_ID, f"🔔 **DEMANDE PREMIUM**\nDe : @{message.from_user.username}\nID : {message.chat.id}")
     bot.send_message(message.chat.id, "⏳ **Vérification en cours...** Réponse sous 24h.")
 
 # --- LANCEMENT ---
 if __name__ == "__main__":
-    keep_alive() # Démarre le serveur web factice
-    print("🚀 Serveur de maintien activé.")
-    print("🚀 Faso Art Promo Bot lancé...")
+    keep_alive()
+    print("🚀 Serveur de maintien et Bot lancés...")
     bot.polling(none_stop=True)
